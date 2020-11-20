@@ -1,73 +1,91 @@
-import tensorflow as tf
+import tensorflow as tf 
+from tensorflow.keras import datasets, layers, models
+from sklearn.model_selection import train_test_split
+import numpy as np
+import matplotlib.pyplot as plt
+import pickle 
 
-from tensorflow.keras import datasets, layers, models  
-import matplotlib.pyplot as plt 
+def unpickle(filename):
+    with open(filename, "rb") as fo:
+        dict = pickle.load(fo, encoding='bytes')
+    return dict
 
-print("Downloading dataset....")
-(train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
-print("dataset downloaded")
-# normalize the pixel values to be between zero and 1 
-train_images, test_images = train_images / 255.0, test_images / 255.0
 
+def load_cifar_data(filename):
+    with open(filename, "rb") as fo: 
+        file_dict = pickle.load(fo, encoding='latin1')
+        images = file_dict['data']
+        images = images.reshape(10000, 3, 32, 32).transpose(0, 2, 3, 1).astype("uint8")
+
+        labels = np.array(file_dict['labels'])
+        return images, labels
+
+def get_cifar_data(): 
+    filenames = ["cifar-10-batches-py/data_batch_1",
+             "cifar-10-batches-py/data_batch_2",
+             "cifar-10-batches-py/data_batch_3",
+             "cifar-10-batches-py/data_batch_4",
+             "cifar-10-batches-py/data_batch_5",
+             "cifar-10-batches-py/test_batch"]
+    data=[]
+    labels=[]
+    for i in range(6):
+        images, new_labels = load_cifar_data(filenames[i])
+        data = np.append(data, images)
+        labels = np.append(labels, new_labels)
+        data = data.reshape(((i+1) * 10000, 32, 32, 3))
+    return data, labels
+
+
+def create_model(): 
+    model = models.Sequential()
+    model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
+    model.add(layers.MaxPooling2D(2, 2))
+    model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D(2, 2))
+    model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+
+    # Add dense layers on top 
+    model.add(layers.Flatten())
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(10))
+    return model
+
+
+def plot_images(images):
+    images = np.array(images, np.int32)
+    fig, axes1 = plt.subplots(5, 5, figsize=(3,3))
+    index = 0
+    for j in range(5): 
+        for k in range(5): 
+            axes1[j][k].set_axis_off()
+            axes1[j][k].imshow(images[index])
+            index += 1
+    plt.show()
+
+
+# FIXME: Create a separate testing and training set 
 
 class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
-               'dog', 'frog', 'horse', 'ship', 'truck'] 
+               'dog', 'frog', 'horse', 'ship', 'truck']
 
-plt.figure(figsize=(10, 10))
-for i in range(25): 
-    plt.subplot(5, 5, i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(train_images[i], cmap=plt.cm.binary)
-    # The CIFAR labels are arrays, why you need the extra index 
-    plt.xlabel(class_names[train_labels[i][0]])
+images, labels = get_cifar_data()
+x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size = 0.2)
 
-#plt.show()
+model = create_model()
 
-# Create the convolutional neural network 
-#   - As input, a CNN takes tensors of shape (image_height, image_width, 
-#       color_channels)
-#         † there are 3 color_channels: (R, G, B)
-#   - The width and height dimensions shrink as you go deeper into the network 
-#   - the number of output channels is controlled by the first argument, (32 or 64)
-#         † typically, as weight and height shrink, you can afford to add more 
-#           output channels in each Conv2D layer
-
-model = models.Sequential()
-model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
-model.add(layers.MaxPooling2D(2, 2))
-model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-model.add(layers.MaxPooling2D(2, 2))
-model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-
-print(model.summary())
-
-# Add dense layers on top 
-model.add(layers.Flatten())
-model.add(layers.Dense(64, activation='relu'))
-model.add(layers.Dense(10))
-
-print("---------------------------NEXT-MODEL----------------------------")
-print(model.summary())
-
-model.compile(optimizer='adam', 
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
+#plot_images(images)
+print("compiling.....", end='')
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
+print("done!")
 
-history = model.fit(train_images, train_labels, epochs=20, 
-                    validation_data=(test_images, test_labels))
+print("training")
+history = model.fit(x_train, y_train, epochs=20, 
+                   validation_data=(x_test, y_test))
+print("done!")
 
-"""
-plt.plot(history.history['accuracy'], label='accuracy')
-plt.plot(history.history['val_accuracy'], label = 'val_accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.ylim([0.5, 1])
-plt.legend(loc='lower right')
-"""
-test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
+test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
 
-print("done")
-
-
+print("done!")
