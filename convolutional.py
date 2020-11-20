@@ -37,7 +37,7 @@ def get_cifar_data():
     return data, labels
 
 
-def create_model(): 
+def create_model():
     model = models.Sequential()
     model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
     model.add(layers.MaxPooling2D(2, 2))
@@ -51,6 +51,15 @@ def create_model():
     model.add(layers.Dense(10))
     return model
 
+
+def plot_model_performance(history): 
+    plt.plot(history.history['accuracy'], label='accuracy')
+    plt.plot(history.history['val_accuracy'], label='val_accuracy')
+    plt.xlabel("epoch")
+    plt.ylabel("Accuracy")
+    plt.ylim([0.5, 1])
+    plt.legend(loc='lower right')
+    plt.show()
 
 def plot_images(images):
     images = np.array(images, np.int32)
@@ -86,6 +95,9 @@ history = model.fit(x_train, y_train, epochs=20,
                    validation_data=(x_test, y_test))
 print("done!")
 
-test_loss, test_acc = model.evaluate(test_images, test_labels, verbose=2)
+test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
 
-print("done!")
+plot_model_performance(history)
+
+print("Test Loss: " + str(test_loss))
+print("Test Accuracy: " + str(test_acc))
