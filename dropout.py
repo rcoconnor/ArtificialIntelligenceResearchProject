@@ -39,7 +39,7 @@ def get_cifar_data():
         data = np.append(data, the_images)
         the_labels = np.append(the_labels, new_labels)
         data = data.reshape(((i+1) * 10000, 32, 32, 3))
-    return data, labels
+    return data, the_labels
 
 
 def create_model():
